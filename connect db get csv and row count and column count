@@ -24,9 +24,6 @@ public class DatabaseToCSVExporter {
     // Hardcoded table names
     private static final String[] TABLES = {"products", "customers", "orders"}; // Replace with your table names
 
-    // Flag to skip downloading and generating CSV for tables with 0 rows
-    private static final boolean SKIP_EMPTY_TABLES = true; // Set to true to enable skipping
-
     public static void main(String[] args) {
         Connection connection = null;
         Statement statementForData = null;
@@ -62,12 +59,6 @@ public class DatabaseToCSVExporter {
                     rowCount = countResultSet.getInt(1); // Get the row count
                 }
                 countResultSet.close();  // Explicitly close the count ResultSet
-
-                // Check if we should skip the table based on the row count
-                if (SKIP_EMPTY_TABLES && rowCount == 0) {
-                    System.out.println("Skipping table " + table + " as it has 0 rows.");
-                    continue; // Skip this iteration for empty tables
-                }
 
                 // Query to get all rows from the table
                 String dataQuery = "SELECT * FROM " + table;
