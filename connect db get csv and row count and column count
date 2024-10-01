@@ -138,7 +138,22 @@ public class OracleToCSV {
             // Write the rows
             while (resultSet.next()) {
                 for (int i = 1; i <= columnCount; i++) {
-                    fileWriter.append(resultSet.getString(i));
+                    String columnType = resultSet.getMetaData().getColumnTypeName(i);
+                    if ("BLOB".equalsIgnoreCase(columnType)) {
+                        // For BLOB data, write "BLOB"
+                        fileWriter.append("BLOB");
+                    } else if ("CLOB".equalsIgnoreCase(columnType)) {
+                        // For CLOB data, write "CLOB"
+                        fileWriter.append("CLOB");
+                    } else {
+                        // For other types, get the value as a string
+                        String value = resultSet.getString(i);
+                        if (value != null) {
+                            fileWriter.append(value);
+                        } else {
+                            fileWriter.append("NULL"); // Handle NULL values
+                        }
+                    }
                     if (i < columnCount) {
                         fileWriter.append(",");
                     }
