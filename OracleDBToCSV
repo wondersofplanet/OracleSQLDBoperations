@@ -6,36 +6,30 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 
 public class OracleToCSV {
 
     // Connection parameters
     private static final String HOST = "localhost"; // Replace with your host
-    private static final String PORT = "1521";      // Default Oracle port number
-    private static final String SERVICE_NAME = "orcl";  // Replace with your service name or SID
-    private static final String USER = "your_username";  // Replace with your username
-    private static final String PASS = "your_password";  // Replace with your password
+    private static final String PORT = "1521";      // Replace with your port number
+    private static final String DATABASE = "XE";    // Replace with your Oracle SID or service name
+    private static final String USER = "system";    // Replace with your username
+    private static final String PASS = "oracle";    // Replace with your password
 
     // Hardcoded table names
-    private static final String[] TABLES = {"products", "customers", "orders"}; // Replace with your table names
+    private static final String[] TABLES = {"PRODUCTS", "CUSTOMERS", "ORDERS"}; // Replace with your table names
 
     public static void main(String[] args) {
         Connection connection = null;
         Statement statementForData = null;
         Statement statementForCount = null;
 
-        // List to hold table names, row counts, and column counts
-        List<String[]> tableRowCounts = new ArrayList<>();
-
         try {
             // Load the Oracle JDBC Driver
             Class.forName("oracle.jdbc.driver.OracleDriver");
 
             // Build the Oracle connection URL dynamically
-            String dbUrl = "jdbc:oracle:thin:@" + HOST + ":" + PORT + "/" + SERVICE_NAME;
+            String dbUrl = "jdbc:oracle:thin:@" + HOST + ":" + PORT + ":" + DATABASE;
 
             // Open connection to the Oracle database
             connection = DriverManager.getConnection(dbUrl, USER, PASS);
@@ -62,12 +56,6 @@ public class OracleToCSV {
                 String dataQuery = "SELECT * FROM " + table;
                 ResultSet dataResultSet = statementForData.executeQuery(dataQuery);
 
-                // Get the column count
-                int columnCount = dataResultSet.getMetaData().getColumnCount();
-
-                // Add the table name, row count, and column count to the list for the summary CSV
-                tableRowCounts.add(new String[]{table, String.valueOf(rowCount), String.valueOf(columnCount)});
-
                 // Generate the CSV file name based on the table name and row count
                 String fileName = table + "_countofrows_" + rowCount + ".csv";
 
@@ -79,16 +67,6 @@ public class OracleToCSV {
 
                 System.out.println("Data saved to " + fileName);
             }
-
-            // After processing all tables, create a summary CSV with table names, row counts, and column counts
-            String summaryFileName = "table_row_column_counts.csv";
-            writeSummaryCSV(tableRowCounts, summaryFileName);
-            System.out.println("Summary of table row and column counts saved to " + summaryFileName);
-            
-            // Create a sorted summary CSV by row count
-            String sortedSummaryFileName = "table_row_column_counts_sortedByrowcount.csv";
-            writeSortedSummaryCSV(tableRowCounts, sortedSummaryFileName);
-            System.out.println("Sorted summary of table row and column counts saved to " + sortedSummaryFileName);
 
             // Open the folder where the CSV files are located
             java.awt.Desktop.getDesktop().open(new File("."));
@@ -124,45 +102,28 @@ public class OracleToCSV {
             // Write the rows
             while (resultSet.next()) {
                 for (int i = 1; i <= columnCount; i++) {
-                    fileWriter.append(resultSet.getString(i));
+                    String columnTypeName = resultSet.getMetaData().getColumnTypeName(i);
+                    
+                    // Check if the column is a BLOB or CLOB and handle appropriately
+                    if (columnTypeName.equals("BLOB")) {
+                        // For BLOB: read as binary data or handle as needed
+                        byte[] blobBytes = resultSet.getBytes(i);
+                        fileWriter.append(blobBytes != null ? "[BLOB_DATA]" : "NULL");
+                    } else if (columnTypeName.equals("CLOB")) {
+                        // For CLOB: read as character stream
+                        String clobData = resultSet.getString(i);
+                        fileWriter.append(clobData != null ? clobData : "NULL");
+                    } else {
+                        // For all other types (e.g., VARCHAR, INT)
+                        String value = resultSet.getString(i);
+                        fileWriter.append(value != null ? value : "NULL");
+                    }
+
                     if (i < columnCount) {
                         fileWriter.append(",");
                     }
                 }
                 fileWriter.append("\n");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // Write the summary CSV file with table names, row counts, and column counts
-    private static void writeSummaryCSV(List<String[]> tableRowCounts, String fileName) {
-        try (FileWriter fileWriter = new FileWriter(fileName)) {
-            // Write the header
-            fileWriter.append("Table,RowCount,ColumnCount\n");
-
-            // Write each table's name, row count, and column count
-            for (String[] row : tableRowCounts) {
-                fileWriter.append(row[0]).append(",").append(row[1]).append(",").append(row[2]).append("\n");
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // Write a sorted summary CSV file by row count
-    private static void writeSortedSummaryCSV(List<String[]> tableRowCounts, String fileName) {
-        // Sort the list based on row count (index 1)
-        tableRowCounts.sort(Comparator.comparingInt(row -> Integer.parseInt(row[1])));
-
-        try (FileWriter fileWriter = new FileWriter(fileName)) {
-            // Write the header
-            fileWriter.append("Table,RowCount,ColumnCount\n");
-
-            // Write each table's name, row count, and column count
-            for (String[] row : tableRowCounts) {
-                fileWriter.append(row[0]).append(",").append(row[1]).append(",").append(row[2]).append("\n");
             }
         } catch (IOException e) {
             e.printStackTrace();
