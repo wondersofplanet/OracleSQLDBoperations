@@ -10,11 +10,11 @@ import java.sql.Statement;
 public class OracleToCSV {
 
     // Connection parameters
-    private static final String HOST = "localhost"; // Replace with your host
-    private static final String PORT = "1521";      // Replace with your port number
-    private static final String DATABASE = "XE";    // Replace with your Oracle SID or service name
-    private static final String USER = "system";    // Replace with your username
-    private static final String PASS = "oracle";    // Replace with your password
+    private static final String HOST = "localhost";     // Replace with your host
+    private static final String PORT = "1521";          // Default Oracle port number
+    private static final String SERVICE_NAME = "orcl";  // Replace with your Oracle service name or SID
+    private static final String USER = "your_username"; // Replace with your Oracle username
+    private static final String PASS = "your_password"; // Replace with your Oracle password
 
     // Hardcoded table names
     private static final String[] TABLES = {"PRODUCTS", "CUSTOMERS", "ORDERS"}; // Replace with your table names
@@ -28,8 +28,8 @@ public class OracleToCSV {
             // Load the Oracle JDBC Driver
             Class.forName("oracle.jdbc.driver.OracleDriver");
 
-            // Build the Oracle connection URL dynamically
-            String dbUrl = "jdbc:oracle:thin:@" + HOST + ":" + PORT + ":" + DATABASE;
+            // Build the Oracle connection URL dynamically using the service name
+            String dbUrl = "jdbc:oracle:thin:@" + HOST + ":" + PORT + "/" + SERVICE_NAME;
 
             // Open connection to the Oracle database
             connection = DriverManager.getConnection(dbUrl, USER, PASS);
