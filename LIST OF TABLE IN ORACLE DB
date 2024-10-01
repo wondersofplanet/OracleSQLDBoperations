@@ -1,1 +1,29 @@
 
+To get a list of all tables in an Oracle database, you can query the system views based on your privileges. Here's how you can do it:
+
+### 1. **For All Tables Accessible by the Current User:**
+
+```sql
+SELECT table_name 
+FROM user_tables;
+```
+
+This will return all tables that belong to the user currently logged in.
+
+### 2. **For All Tables Accessible by the Current User Including Views and Synonyms:**
+
+```sql
+SELECT table_name 
+FROM all_tables;
+```
+
+This will return all tables accessible by the user, including those owned by other users to which you have access.
+
+### 3. **For All Tables in the Entire Database (DBA Privileges Required):**
+
+```sql
+SELECT table_name, owner 
+FROM dba_tables;
+```
+
+This will return all tables in the database, but you need DBA privileges to run this query.
