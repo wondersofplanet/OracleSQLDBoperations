@@ -6,6 +6,8 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 public class OracleToCSV {
 
@@ -23,6 +25,7 @@ public class OracleToCSV {
         Connection connection = null;
         Statement statementForData = null;
         Statement statementForCount = null;
+        List<String> tablesWithBlobOrClob = new ArrayList<>();
 
         try {
             // Load the Oracle JDBC Driver
@@ -60,16 +63,30 @@ public class OracleToCSV {
                 String fileName = table + "_countofrows_" + rowCount + ".csv";
 
                 // Get table data and write to CSV
-                writeToCSV(dataResultSet, fileName);
+                boolean containsBlobOrClob = writeToCSV(dataResultSet, fileName);
 
                 // Close the data ResultSet
                 dataResultSet.close();
+
+                if (containsBlobOrClob) {
+                    tablesWithBlobOrClob.add(table); // Record table if it has BLOB or CLOB columns
+                }
 
                 System.out.println("Data saved to " + fileName);
             }
 
             // Open the folder where the CSV files are located
             java.awt.Desktop.getDesktop().open(new File("."));
+
+            // Print the tables with BLOB or CLOB columns
+            if (!tablesWithBlobOrClob.isEmpty()) {
+                System.out.println("Tables with BLOB or CLOB columns: ");
+                for (String table : tablesWithBlobOrClob) {
+                    System.out.println(table);
+                }
+            } else {
+                System.out.println("No tables with BLOB or CLOB columns found.");
+            }
 
         } catch (SQLException | ClassNotFoundException | IOException e) {
             e.printStackTrace();
@@ -85,8 +102,10 @@ public class OracleToCSV {
         }
     }
 
-    // Write the ResultSet data to a CSV file
-    private static void writeToCSV(ResultSet resultSet, String fileName) throws SQLException {
+    // Write the ResultSet data to a CSV file and return whether BLOB or CLOB columns are present
+    private static boolean writeToCSV(ResultSet resultSet, String fileName) throws SQLException {
+        boolean containsBlobOrClob = false;
+
         try (FileWriter fileWriter = new FileWriter(fileName)) {
             int columnCount = resultSet.getMetaData().getColumnCount();
 
@@ -103,14 +122,14 @@ public class OracleToCSV {
             while (resultSet.next()) {
                 for (int i = 1; i <= columnCount; i++) {
                     String columnTypeName = resultSet.getMetaData().getColumnTypeName(i);
-                    
+
                     // Check if the column is a BLOB or CLOB and handle appropriately
                     if (columnTypeName.equals("BLOB")) {
-                        // For BLOB: read as binary data or handle as needed
+                        containsBlobOrClob = true;
                         byte[] blobBytes = resultSet.getBytes(i);
                         fileWriter.append(blobBytes != null ? "[BLOB_DATA]" : "NULL");
                     } else if (columnTypeName.equals("CLOB")) {
-                        // For CLOB: read as character stream
+                        containsBlobOrClob = true;
                         String clobData = resultSet.getString(i);
                         fileWriter.append(clobData != null ? clobData : "NULL");
                     } else {
@@ -128,5 +147,7 @@ public class OracleToCSV {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        return containsBlobOrClob;
     }
 }
