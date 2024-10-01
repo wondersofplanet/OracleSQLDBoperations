@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class OracleToCSV {
+public class DatabaseToCSVExporter {
 
     // Connection parameters
     private static final String HOST = "localhost"; // Replace with your host
@@ -88,7 +88,7 @@ public class OracleToCSV {
                 String fileName = table + "_countofrows_" + rowCount + ".csv";
 
                 // Get table data and write to CSV
-                writeToCSV(dataResultSet, fileName);
+                exportDataToCSV(dataResultSet, fileName);
 
                 // Close the data ResultSet
                 dataResultSet.close();
@@ -98,12 +98,12 @@ public class OracleToCSV {
 
             // After processing all tables, create a summary CSV with table names, row counts, column counts, BLOB counts, and CLOB counts
             String summaryFileName = "table_row_column_counts.csv";
-            writeSummaryCSV(tableRowCounts, summaryFileName);
+            exportSummaryToCSV(tableRowCounts, summaryFileName);
             System.out.println("Summary of table row and column counts saved to " + summaryFileName);
-            
+
             // Create a sorted summary CSV by row count
             String sortedSummaryFileName = "table_row_column_counts_sortedByrowcount.csv";
-            writeSortedSummaryCSV(tableRowCounts, sortedSummaryFileName);
+            exportSortedSummaryToCSV(tableRowCounts, sortedSummaryFileName);
             System.out.println("Sorted summary of table row and column counts saved to " + sortedSummaryFileName);
 
             // Open the folder where the CSV files are located
@@ -124,7 +124,7 @@ public class OracleToCSV {
     }
 
     // Write the ResultSet data to a CSV file
-    private static void writeToCSV(ResultSet resultSet, String fileName) throws SQLException {
+    private static void exportDataToCSV(ResultSet resultSet, String fileName) throws SQLException {
         try (FileWriter fileWriter = new FileWriter(fileName)) {
             int columnCount = resultSet.getMetaData().getColumnCount();
 
@@ -142,11 +142,22 @@ public class OracleToCSV {
                 for (int i = 1; i <= columnCount; i++) {
                     String columnType = resultSet.getMetaData().getColumnTypeName(i);
                     if ("BLOB".equalsIgnoreCase(columnType)) {
-                        // For BLOB data, write "BLOB"
-                        fileWriter.append("BLOB");
+                        // Handle BLOB data
+                        Blob blob = resultSet.getBlob(i);
+                        if (blob != null) {
+                            fileWriter.append("BLOB"); // Placeholder for BLOB
+                        } else {
+                            fileWriter.append("NULL"); // Handle NULL values
+                        }
                     } else if ("CLOB".equalsIgnoreCase(columnType)) {
-                        // For CLOB data, write "CLOB"
-                        fileWriter.append("CLOB");
+                        // Handle CLOB data
+                        Clob clob = resultSet.getClob(i);
+                        if (clob != null) {
+                            String clobData = clob.getSubString(1, (int) clob.length()); // Read CLOB data
+                            fileWriter.append(clobData); // Use CLOB data as a string
+                        } else {
+                            fileWriter.append("NULL"); // Handle NULL values
+                        }
                     } else {
                         // For other types, get the value as a string
                         String value = resultSet.getString(i);
@@ -168,7 +179,7 @@ public class OracleToCSV {
     }
 
     // Write the summary CSV file with table names, row counts, column counts, BLOB counts, and CLOB counts
-    private static void writeSummaryCSV(List<String[]> tableRowCounts, String fileName) {
+    private static void exportSummaryToCSV(List<String[]> tableRowCounts, String fileName) {
         try (FileWriter fileWriter = new FileWriter(fileName)) {
             // Write the header
             fileWriter.append("Table,RowCount,ColumnCount,BLOBCount,CLOBCount\n");
@@ -183,7 +194,7 @@ public class OracleToCSV {
     }
 
     // Write a sorted summary CSV file by row count
-    private static void writeSortedSummaryCSV(List<String[]> tableRowCounts, String fileName) {
+    private static void exportSortedSummaryToCSV(List<String[]> tableRowCounts, String fileName) {
         // Sort the list based on row count (index 1)
         tableRowCounts.sort(Comparator.comparingInt(row -> Integer.parseInt(row[1])));
 
