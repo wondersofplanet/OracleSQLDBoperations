@@ -1,0 +1,123 @@
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.nio.charset.StandardCharsets;
+
+public class PostgresToCSV {
+
+    // Connection parameters
+    private static final String HOST = "localhost"; // Replace with your host
+    private static final String PORT = "5432";      // Replace with your port number
+    private static final String DATABASE = "postgres";  // Replace with your database name
+    private static final String USER = "postgres";  // Replace with your username
+    private static final String PASS = "admin";  // Replace with your password
+
+    // Table names to export (include example_table or other problematic tables here)
+    private static final String[] TABLES = {"products", "customers", "orders", "example_table"};
+
+    public static void main(String[] args) {
+        Connection connection = null;
+        Statement statementForData = null;
+
+        try {
+            // Load the PostgreSQL JDBC Driver
+            Class.forName("org.postgresql.Driver");
+
+            // Build the PostgreSQL connection URL dynamically
+            String dbUrl = "jdbc:postgresql://" + HOST + ":" + PORT + "/" + DATABASE;
+
+            // Open connection to the PostgreSQL database
+            connection = DriverManager.getConnection(dbUrl, USER, PASS);
+
+            // Loop through each table name
+            for (String table : TABLES) {
+                System.out.println("Downloading data from table: " + table);
+
+                // Create a statement for the data query
+                statementForData = connection.createStatement();
+
+                // Query to get all rows from the table
+                String dataQuery = "SELECT * FROM " + table;
+                ResultSet dataResultSet = statementForData.executeQuery(dataQuery);
+
+                // Get the column count
+                int columnCount = dataResultSet.getMetaData().getColumnCount();
+
+                // Generate the CSV file name based on the table name
+                String fileName = table + ".csv";
+
+                // Get table data and write to CSV
+                writeToCSV(dataResultSet, columnCount, fileName);
+
+                // Close the data ResultSet
+                dataResultSet.close();
+
+                System.out.println("Data saved to " + fileName);
+            }
+
+            // Open the folder where the CSV files are located
+            java.awt.Desktop.getDesktop().open(new File("."));
+
+        } catch (SQLException | ClassNotFoundException | IOException e) {
+            e.printStackTrace();
+        } finally {
+            // Close the resources
+            try {
+                if (statementForData != null) statementForData.close();
+                if (connection != null) connection.close();
+            } catch (SQLException se) {
+                se.printStackTrace();
+            }
+        }
+    }
+
+    // Write the ResultSet data to a CSV file in UTF-8 format
+    private static void writeToCSV(ResultSet resultSet, int columnCount, String fileName) throws SQLException {
+        try (OutputStreamWriter outputStreamWriter = 
+                 new OutputStreamWriter(new FileOutputStream(fileName), StandardCharsets.UTF_8)) {
+
+            // Write the column headers
+            for (int i = 1; i <= columnCount; i++) {
+                outputStreamWriter.append(resultSet.getMetaData().getColumnName(i));
+                if (i < columnCount) {
+                    outputStreamWriter.append(",");
+                }
+            }
+            outputStreamWriter.append("\n");
+
+            // Write the rows
+            while (resultSet.next()) {
+                for (int i = 1; i <= columnCount; i++) {
+                    String value = resultSet.getString(i);
+
+                    // If value is NULL, write an empty cell
+                    if (value == null) {
+                        value = "";
+                    }
+
+                    // Check if the value contains a comma, quote, or newline, and enclose it in double quotes if needed
+                    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+                        // Escape any existing double quotes in the value by doubling them
+                        value = "\"" + value.replace("\"", "\"\"") + "\"";
+                    }
+
+                    outputStreamWriter.append(value);
+
+                    // Add comma except after the last column
+                    if (i < columnCount) {
+                        outputStreamWriter.append(",");
+                    }
+                }
+                outputStreamWriter.append("\n");
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
